@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 
 	"github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v3"
@@ -23,8 +24,13 @@ import (
 const version = "0.1.0"
 
 type Config struct {
-	Token    string `yaml:"token"`
-	Protocol string `yaml:"protocol"`
+	Token        string `yaml:"token"`
+	Protocol     string `yaml:"protocol"`
+	LogLevel     string `yaml:"loglevel"`
+	LogFile      string `yaml:"logfile"`
+	LogDirectory string `yaml:"log-directory"`
+	PidFile      string `yaml:"pidfile"`
+	Retries      *int   `yaml:"retries"` // nil 表示沿用 cloudflared 默认值 5
 }
 
 func loadConfig(path string) (*Config, error) {
@@ -48,6 +54,16 @@ func loadConfig(path string) (*Config, error) {
 	case "auto", "quic", "http2":
 	default:
 		return nil, fmt.Errorf("%s: protocol must be auto, quic or http2, got %q", path, cfg.Protocol)
+	}
+	switch cfg.LogLevel {
+	case "":
+		cfg.LogLevel = "info"
+	case "debug", "info", "warn", "error", "fatal":
+	default:
+		return nil, fmt.Errorf("%s: loglevel must be debug, info, warn, error or fatal, got %q", path, cfg.LogLevel)
+	}
+	if cfg.Retries != nil && *cfg.Retries < 0 {
+		return nil, fmt.Errorf("%s: retries must be >= 0, got %d", path, *cfg.Retries)
 	}
 	return &cfg, nil
 }
@@ -85,6 +101,12 @@ const usage = `cftunnel - 用 token 运行 Cloudflare Tunnel（内嵌 cloudflare
 配置文件 (YAML):
   token: eyJhIjoi...   # 必填，Zero Trust 面板中隧道的 token
   protocol: auto       # 可选，auto | quic | http2，默认 auto
+  loglevel: info       # 可选，debug | info | warn | error | fatal，默认 info
+  logfile: <path>      # 可选，日志额外写入该文件，默认只输出到终端
+  log-directory: <dir> # 可选，日志额外写入该目录下的 cloudflared.log（按 1MB 滚动，保留 5 份）；
+                       #       与 logfile 同时设置时以 logfile 为准
+  pidfile: <path>      # 可选，隧道连接成功后把 PID 写入该文件（退出时不删除）
+  retries: 5           # 可选，连接/协议出错时的最大重试次数，默认 5
 `
 
 // parseFlags 解析命令行，返回配置文件路径。
@@ -141,14 +163,28 @@ func main() {
 		Version:  version,
 		Commands: tunnel.Commands(),
 	}
-	// 等价于: cloudflared tunnel --no-autoupdate --protocol <p> run --token <t>
+	// 等价于: cloudflared tunnel --no-autoupdate --protocol <p> --loglevel <l> [--logfile <f>] [--log-directory <d>] [--pidfile <p>] [--retries <n>] run --token <t>
 	// 参数只在进程内传递，不会出现在 ps 里
 	args := []string{
 		"cloudflared", "tunnel",
 		"--no-autoupdate",
 		"--protocol", cfg.Protocol,
-		"run", "--token", cfg.Token,
+		"--loglevel", cfg.LogLevel,
 	}
+	if cfg.LogFile != "" {
+		args = append(args, "--logfile", cfg.LogFile)
+	}
+	// 两者都指定时 cloudflared 只用 --logfile
+	if cfg.LogDirectory != "" {
+		args = append(args, "--log-directory", cfg.LogDirectory)
+	}
+	if cfg.PidFile != "" {
+		args = append(args, "--pidfile", cfg.PidFile)
+	}
+	if cfg.Retries != nil {
+		args = append(args, "--retries", strconv.Itoa(*cfg.Retries))
+	}
+	args = append(args, "run", "--token", cfg.Token)
 	if err := app.Run(args); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

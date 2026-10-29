@@ -13,12 +13,23 @@
 token: eyJhIjoi...
 # auto | quic | http2，省略时为 auto；UDP 7844 不通时用 http2
 protocol: auto
+# debug | info | warn | error | fatal，省略时为 info
+loglevel: info
+#logfile: /var/log/cftunnel.log
+#log-directory: /var/log/cftunnel
+#pidfile: /run/cftunnel.pid
+#retries: 5
 ```
 
 | 字段 | 必填 | 说明 |
 |---|---|---|
 | `token` | 是 | 隧道 token，即 base64 编码的 `{"a","t","s"}` JSON，启动前会先校验格式 |
 | `protocol` | 否 | 连接边缘节点用的协议：`auto`（默认）、`quic` 或 `http2` |
+| `loglevel` | 否 | 日志级别：`debug`、`info`（默认）、`warn`、`error`、`fatal` |
+| `logfile` | 否 | 日志额外写入该文件（JSON 格式，终端输出不变）；省略时只输出到终端 |
+| `log-directory` | 否 | 日志额外写入该目录下的 `cloudflared.log`（JSON 格式，按 1MB 滚动，保留 5 份）；与 `logfile` 同时设置时以 `logfile` 为准 |
+| `pidfile` | 否 | 隧道连接成功后把进程 PID 写入该文件；连不上时不会写入，退出时也不删除 |
+| `retries` | 否 | 连接或协议出错时的最大重试次数，必须 ≥ 0，省略时为 cloudflared 默认值 5 |
 
 > token 等同于隧道凭据，请不要提交到仓库。`.gitignore` 已经忽略了 `config.yaml`。
 
@@ -41,7 +52,7 @@ go build -trimpath -ldflags "-s -w" -o cftunnel .
 运行时等价于：
 
 ```
-cloudflared tunnel --no-autoupdate --protocol <protocol> run --token <token>
+cloudflared tunnel --no-autoupdate --protocol <protocol> --loglevel <level> [--logfile <path>] [--log-directory <dir>] [--pidfile <path>] [--retries <n>] run --token <token>
 ```
 
 token 只在进程内部传递，不会出现在 `ps` 的命令行里。按 Ctrl-C 或发送 SIGTERM 会触发优雅退出。

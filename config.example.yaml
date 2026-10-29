@@ -2,3 +2,14 @@
 token: eyJhIjoi...
 # auto | quic | http2；UDP 7844 被封时用 http2
 protocol: auto
+# debug | info | warn | error | fatal，省略时为 info
+loglevel: info
+# 以下均可选，省略时日志只输出到终端、不写 pid 文件
+# 日志额外写入该文件
+#logfile: /var/log/cftunnel.log
+# 日志额外写入该目录下的 cloudflared.log（按 1MB 滚动，保留 5 份）；与 logfile 同时设置时以 logfile 为准
+#log-directory: /var/log/cftunnel
+# 隧道连接成功后写入 PID，退出时不删除
+#pidfile: /run/cftunnel.pid
+# 连接/协议出错时的最大重试次数，省略时为 5
+#retries: 5
