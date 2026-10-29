@@ -28,8 +28,15 @@ protocol: auto
 
 ```bash
 go build -trimpath -ldflags "-s -w" -o cftunnel .
-./cftunnel /path/to/config.yaml
+./cftunnel                       # 读取当前目录下的 config.yaml
+./cftunnel -c /path/to/config.yaml
 ```
+
+| 选项 | 说明 |
+|---|---|
+| `-c`, `--config <path>` | 配置文件路径，默认 `./config.yaml` |
+| `-h`, `--help` | 显示用法 |
+| `-v`, `--version` | 显示版本 |
 
 运行时等价于：
 

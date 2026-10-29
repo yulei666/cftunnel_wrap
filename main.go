@@ -1,12 +1,15 @@
 // cftunnel 内嵌 cloudflared，仅支持通过 token 运行远程托管隧道。
 //
-// 用法: cftunnel <config.yaml>
+// 用法: cftunnel [-c config.yaml]
 package main
 
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
+	"flag"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/urfave/cli/v2"
@@ -69,12 +72,57 @@ func checkToken(token string) error {
 	return nil
 }
 
+const usage = `cftunnel - 用 token 运行 Cloudflare Tunnel（内嵌 cloudflared）
+
+用法:
+  cftunnel [-c <path>]
+
+选项:
+  -c, --config <path>  配置文件路径（默认 ./config.yaml）
+  -h, --help           显示本帮助
+  -v, --version        显示版本
+
+配置文件 (YAML):
+  token: eyJhIjoi...   # 必填，Zero Trust 面板中隧道的 token
+  protocol: auto       # 可选，auto | quic | http2，默认 auto
+`
+
+// parseFlags 解析命令行，返回配置文件路径。
+func parseFlags(args []string) (string, error) {
+	// 错误和用法统一由 main 打印
+	fs := flag.NewFlagSet("cftunnel", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+
+	var configPath string
+	var showVersion bool
+	fs.StringVar(&configPath, "c", "config.yaml", "")
+	fs.StringVar(&configPath, "config", "config.yaml", "")
+	fs.BoolVar(&showVersion, "v", false, "")
+	fs.BoolVar(&showVersion, "version", false, "")
+	if err := fs.Parse(args); err != nil {
+		return "", err
+	}
+	if fs.NArg() > 0 {
+		return "", fmt.Errorf("unexpected argument: %s", fs.Arg(0))
+	}
+	if showVersion {
+		fmt.Println("cftunnel", version)
+		os.Exit(0)
+	}
+	return configPath, nil
+}
+
 func main() {
-	if len(os.Args) != 2 {
-		fmt.Fprintf(os.Stderr, "usage: %s <config.yaml>\n", os.Args[0])
+	configPath, err := parseFlags(os.Args[1:])
+	if errors.Is(err, flag.ErrHelp) {
+		fmt.Print(usage)
+		os.Exit(0)
+	}
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n\n%s", err, usage)
 		os.Exit(2)
 	}
-	cfg, err := loadConfig(os.Args[1])
+	cfg, err := loadConfig(configPath)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
