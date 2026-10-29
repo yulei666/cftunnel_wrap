@@ -57,6 +57,27 @@ cloudflared tunnel --no-autoupdate --protocol <protocol> --loglevel <level> [--l
 
 token 只在进程内部传递，不会出现在 `ps` 的命令行里。按 Ctrl-C 或发送 SIGTERM 会触发优雅退出。
 
+### 后台运行
+
+[`cftunnel.sh`](cftunnel.sh) 用于后台启停（Linux / macOS）：
+
+```bash
+./cftunnel.sh start     # 后台启动，输出追加到 cftunnel.log
+./cftunnel.sh stop      # 发送 SIGTERM，35 秒内未退出则 SIGKILL
+./cftunnel.sh restart
+./cftunnel.sh status
+```
+
+默认在脚本所在目录查找 `cftunnel` 和 `config.yaml`，可用环境变量覆盖：
+
+| 变量 | 默认值 | 说明 |
+|---|---|---|
+| `CFTUNNEL_BIN` | `<脚本目录>/cftunnel` | 二进制路径 |
+| `CFTUNNEL_CONFIG` | `<脚本目录>/config.yaml` | 配置文件路径 |
+| `CFTUNNEL_PIDFILE` | `<脚本目录>/cftunnel.pid` | 脚本自己管理的 PID 文件，与配置里的 `pidfile` 无关 |
+| `CFTUNNEL_LOG` | `<脚本目录>/cftunnel.log` | 标准输出/错误重定向到的文件 |
+| `CFTUNNEL_STOP_TIMEOUT` | `35` | stop 时等待优雅退出的秒数 |
+
 交叉编译示例：
 
 ```bash

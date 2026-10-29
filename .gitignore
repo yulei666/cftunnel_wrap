@@ -35,3 +35,7 @@ go.work.sum
 # Build output and local config (may contain tunnel token)
 /cftunnel
 config.yaml
+
+# Runtime files written by cftunnel.sh
+/cftunnel.pid
+/cftunnel.log
