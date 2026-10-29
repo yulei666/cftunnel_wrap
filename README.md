@@ -69,4 +69,12 @@ GOOS=android GOARCH=arm64 go build -trimpath -ldflags "-s -w" -o libcftunnel.so 
 
 分发二进制时，请一并附上 `LICENSE`、`NOTICE` 和 `THIRD_PARTY_LICENSES.md`。
 
+升级 cloudflared 或调整依赖后，在仓库根目录重新生成这两个文件：
+
+```bash
+go run ./scripts/genlicenses
+```
+
+它会编译 cftunnel，从二进制的 build info 里读出实际链接的模块（已应用 `replace`），再到 `GOMODCACHE` 中查找各模块的 LICENSE 和 NOTICE。如果有模块的许可证无法识别或缺失，命令会以非零状态退出，这时需要人工确认。如果出现 MPL、GPL 等非宽松许可证，也要人工评估。
+
 本项目与 Cloudflare, Inc. 无关联，"Cloudflare" 是 Cloudflare, Inc. 的商标。
