@@ -1,0 +1,4 @@
+# Cloudflare Zero Trust 面板 -> Tunnels -> 你的隧道 -> 安装命令里 --token 后面那串
+token: eyJhIjoi...
+# auto | quic | http2；UDP 7844 被封时用 http2
+protocol: auto
