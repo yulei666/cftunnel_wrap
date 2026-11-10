@@ -21,7 +21,8 @@ import (
 	"github.com/cloudflare/cloudflared/tracing"
 )
 
-const version = "0.1.0"
+// version 在发布构建时通过 -ldflags "-X main.version=..." 覆盖
+var version = "0.2.0"
 
 type Config struct {
 	Token        string `yaml:"token"`
