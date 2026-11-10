@@ -39,3 +39,4 @@ config.yaml
 # Runtime files written by cftunnel.sh
 /cftunnel.pid
 /cftunnel.log
+/dist/

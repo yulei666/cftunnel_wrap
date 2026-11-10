@@ -35,7 +35,7 @@ loglevel: info
 
 ## 构建与运行
 
-需要 Go 1.26 或更高版本（go.mod 要求的版本；本地版本较低时，`GOTOOLCHAIN=auto` 会自动下载）。
+需要 Go 1.27.3 或更高版本（go.mod 要求的版本；本地版本较低时，`GOTOOLCHAIN=auto` 会自动下载）。
 
 ```bash
 go build -trimpath -ldflags "-s -w" -o cftunnel .
@@ -86,6 +86,24 @@ GOOS=darwin  GOARCH=arm64 go build -trimpath -ldflags "-s -w" -o cftunnel-mac .
 GOOS=android GOARCH=arm64 go build -trimpath -ldflags "-s -w" -o libcftunnel.so .
 ```
 
+## 发布
+
+[`.github/workflows/release.yml`](.github/workflows/release.yml) 用 `CGO_ENABLED=0` 交叉编译 linux/amd64、linux/arm64、darwin/amd64、darwin/arm64 四个平台：
+
+- 推送 `v*` tag（如 `v0.2.0`）时，创建 GitHub Release 并上传各平台的 `cftunnel_<版本>_<os>_<arch>.tar.gz` 和 `checksums.txt`。tag 中带 `-`（如 `v0.2.0-rc.1`）的发布为 pre-release。
+- PR、推送 main 或手动触发时只编译，产物可以在 Actions 运行页面下载。
+
+改动在功能分支上开发，经 PR 合并到 `main` 后，再在 `main` 上打 tag 发布（tag 不在 `main` 上时 release 任务会失败）。完整流程见 [AGENTS.md](AGENTS.md)。
+
+```bash
+git switch main && git pull --ff-only
+git tag -a v0.2.0 -m "v0.2.0" && git push origin v0.2.0
+```
+
+压缩包内含 `cftunnel`、`cftunnel.sh`、`config.example.yaml`、README 和许可证文件，版本号通过 `-X main.version` 注入。本地可以执行 `scripts/build-release.sh <版本> [goos/goarch ...]` 生成相同的产物，输出到 `dist/`。
+
+macOS 二进制没有签名，通过浏览器下载后需要先执行 `xattr -d com.apple.quarantine cftunnel` 才能运行。
+
 ## 网络要求
 
 - 能出站访问 `region1.v2.argotunnel.com` / `region2.v2.argotunnel.com` 的 **7844** 端口（QUIC 走 UDP，HTTP/2 走 TCP）。
@@ -95,7 +113,8 @@ GOOS=android GOARCH=arm64 go build -trimpath -ldflags "-s -w" -o libcftunnel.so 
 
 - 调用 cloudflared 的 `tunnel.Init()` 和 `tunnel.Commands()`，在进程内执行 `tunnel run` 子命令。连接、重连和远程配置下发都沿用官方逻辑。
 - `go.mod` 中的 4 条 `replace` 是从 cloudflared 的 go.mod 原样复制的（它依赖 urfave/cli 和 quic-go 的 fork 版本）。Go 的 replace 不会传递给下游模块，所以**不能删除**。升级 cloudflared 时，需要对照新版本的 go.mod 同步更新。
-- `tunnel.Init` 等是 cloudflared 的内部 API，不保证跨版本稳定。当前锁定在 cloudflared `2026.9.3`，升级后需要重新编译验证。
+- `tunnel.Init` 等是 cloudflared 的内部 API，不保证跨版本稳定。当前锁定在 cloudflared `2026.10.7`，升级后需要重新编译验证。
+- cloudflared 的 tag（如 `2026.10.7`）不是 Go 认可的 semver，go.mod 中只能记录为 pseudo-version。升级时执行 `go get github.com/cloudflare/cloudflared@<tag>`，再更新 go.mod 中版本后的注释，并运行 `go run ./scripts/genlicenses`。
 
 ## 许可证
 

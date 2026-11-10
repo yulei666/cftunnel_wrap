@@ -1,7 +1,7 @@
 // genlicenses 重新生成 NOTICE 和 THIRD_PARTY_LICENSES.md。
 //
-// 它会编译 cftunnel，从二进制的 build info 里读出实际链接的模块
-// （已应用 replace），再到 GOMODCACHE 中查找各模块的 LICENSE / NOTICE 文件。
+// 它会为每个发布平台编译 cftunnel，从二进制的 build info 里读出实际链接的模块
+// （已应用 replace）并取并集，再到 GOMODCACHE 中查找各模块的 LICENSE / NOTICE 文件。
 //
 // 用法（在仓库根目录执行）: go run ./scripts/genlicenses
 package main
@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime/debug"
 	"sort"
 	"strings"
 )
@@ -59,13 +60,7 @@ func main() {
 		log.Fatal(err)
 	}
 	defer os.RemoveAll(tmp)
-	bin := filepath.Join(tmp, "cftunnel")
-	run("go", "build", "-trimpath", "-o", bin, ".")
-
-	info, err := buildinfo.ReadFile(bin)
-	if err != nil {
-		log.Fatal(err)
-	}
+	deps := collectDeps(tmp)
 	modCache := strings.TrimSpace(run("go", "env", "GOMODCACHE"))
 
 	var notice, table bytes.Buffer
@@ -73,7 +68,7 @@ func main() {
 	table.WriteString(thirdPartyHeader)
 
 	unknown := 0
-	for _, dep := range info.Deps {
+	for _, dep := range deps {
 		src := dep
 		if dep.Replace != nil {
 			src = dep.Replace
@@ -106,10 +101,43 @@ func main() {
 
 	write("NOTICE", notice.Bytes())
 	write("THIRD_PARTY_LICENSES.md", table.Bytes())
-	log.Printf("wrote NOTICE and THIRD_PARTY_LICENSES.md (%d modules)", len(info.Deps))
+	log.Printf("wrote NOTICE and THIRD_PARTY_LICENSES.md (%d modules)", len(deps))
 	if unknown > 0 {
 		log.Fatalf("%d module(s) have an unrecognized or missing license; review THIRD_PARTY_LICENSES.md", unknown)
 	}
+}
+
+// targets 是发布流水线产出的平台；不同平台链接的模块不完全相同
+// （例如 prometheus/procfs 只在 linux 上链接），NOTICE 需要覆盖它们的并集。
+var targets = []string{"linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64"}
+
+// collectDeps 为每个目标平台编译一次，合并 build info 中的模块并按路径排序。
+func collectDeps(tmp string) []*debug.Module {
+	seen := map[string]*debug.Module{}
+	for _, t := range targets {
+		goos, goarch, _ := strings.Cut(t, "/")
+		bin := filepath.Join(tmp, "cftunnel-"+goos+"-"+goarch)
+		cmd := exec.Command("go", "build", "-trimpath", "-o", bin, ".")
+		cmd.Env = append(os.Environ(), "GOOS="+goos, "GOARCH="+goarch, "CGO_ENABLED=0")
+		cmd.Stdout = os.Stderr
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			log.Fatalf("go build (%s): %v", t, err)
+		}
+		info, err := buildinfo.ReadFile(bin)
+		if err != nil {
+			log.Fatal(err)
+		}
+		for _, dep := range info.Deps {
+			seen[dep.Path] = dep
+		}
+	}
+	deps := make([]*debug.Module, 0, len(seen))
+	for _, dep := range seen {
+		deps = append(deps, dep)
+	}
+	sort.Slice(deps, func(i, j int) bool { return deps[i].Path < deps[j].Path })
+	return deps
 }
 
 // classify 根据 LICENSE 文本中的特征语句判断许可证类型。
