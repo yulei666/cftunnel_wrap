@@ -21,8 +21,9 @@ import (
 	"github.com/cloudflare/cloudflared/tracing"
 )
 
-// version 在发布构建时通过 -ldflags "-X main.version=..." 覆盖
-var version = "0.2.0"
+// version 由发布构建通过 -ldflags "-X main.version=..." 注入（取自 git tag），
+// 本地直接 go build 时为 "dev"。不要手动修改。
+var version = "dev"
 
 type Config struct {
 	Token        string `yaml:"token"`

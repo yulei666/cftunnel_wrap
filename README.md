@@ -100,7 +100,7 @@ git switch main && git pull --ff-only
 git tag -a v0.2.0 -m "v0.2.0" && git push origin v0.2.0
 ```
 
-压缩包内含 `cftunnel`、`cftunnel.sh`、`config.example.yaml`、README 和许可证文件，版本号通过 `-X main.version` 注入。本地可以执行 `scripts/build-release.sh <版本> [goos/goarch ...]` 生成相同的产物，输出到 `dist/`。
+压缩包内含 `cftunnel`、`cftunnel.sh`、`config.example.yaml`、README 和许可证文件，版本号取自 tag，通过 `-X main.version` 注入；本地直接 `go build` 得到的二进制显示 `dev`。本地可以执行 `scripts/build-release.sh <版本> [goos/goarch ...]` 生成相同的产物，输出到 `dist/`。
 
 macOS 二进制没有签名，通过浏览器下载后需要先执行 `xattr -d com.apple.quarantine cftunnel` 才能运行。
 

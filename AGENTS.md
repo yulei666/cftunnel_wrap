@@ -52,6 +52,6 @@ scripts/build-release.sh 0.0.0-dev                   # 本地生成四个平台�
    ```
 
    推送 tag 后，workflow 会编译 linux/amd64、linux/arm64、darwin/amd64、darwin/arm64，并创建 GitHub Release。release 任务会检查 tag 是否在 `main` 上，不在则直接失败，不会发布。
-4. 版本号遵循 semver，tag 格式为 `vX.Y.Z`；带 `-` 后缀的（如 `v0.3.0-rc.1`）发布为 pre-release。发布前把 `main.go` 中的默认 `version` 改成同一个版本号，随 PR 一起合并。
+4. 版本号遵循 semver，tag 格式为 `vX.Y.Z`；带 `-` 后缀的（如 `v0.3.0-rc.1`）发布为 pre-release。版本号只来自 tag：CI 构建时通过 `-X main.version` 注入，`main.go` 中的默认值固定为 `dev`，发布时不需要修改代码。
 5. 不要移动或删除已经推送的 tag。发布有问题时，修复后发布新的 patch 版本。
 6. 打 tag、推送 tag 和发布都是对外可见的操作，代理执行前需要得到用户明确同意。
