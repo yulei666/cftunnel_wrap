@@ -93,8 +93,11 @@ GOOS=android GOARCH=arm64 go build -trimpath -ldflags "-s -w" -o libcftunnel.so 
 - 推送 `v*` tag（如 `v0.2.0`）时，创建 GitHub Release 并上传各平台的 `cftunnel_<版本>_<os>_<arch>.tar.gz` 和 `checksums.txt`。tag 中带 `-`（如 `v0.2.0-rc.1`）的发布为 pre-release。
 - PR、推送 main 或手动触发时只编译，产物可以在 Actions 运行页面下载。
 
+改动在功能分支上开发，经 PR 合并到 `main` 后，再在 `main` 上打 tag 发布（tag 不在 `main` 上时 release 任务会失败）。完整流程见 [AGENTS.md](AGENTS.md)。
+
 ```bash
-git tag v0.2.0 && git push origin v0.2.0
+git switch main && git pull --ff-only
+git tag -a v0.2.0 -m "v0.2.0" && git push origin v0.2.0
 ```
 
 压缩包内含 `cftunnel`、`cftunnel.sh`、`config.example.yaml`、README 和许可证文件，版本号通过 `-X main.version` 注入。本地可以执行 `scripts/build-release.sh <版本> [goos/goarch ...]` 生成相同的产物，输出到 `dist/`。
